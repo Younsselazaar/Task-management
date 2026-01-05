@@ -1,0 +1,110 @@
+================================================================================
+                      TODO FLUTTER APP - BUILD INSTRUCTIONS
+================================================================================
+
+This is a complete Flutter project converted from the React/TypeScript todo app.
+Follow these steps to install Flutter and build the APK.
+
+================================================================================
+STEP 1: INSTALL FLUTTER
+================================================================================
+
+1. Download Flutter SDK from: https://docs.flutter.dev/get-started/install/windows
+
+2. Extract the zip file to a location (e.g., C:\flutter)
+
+3. Add Flutter to your PATH:
+   - Open Windows Settings > System > About > Advanced system settings
+   - Click "Environment Variables"
+   - Under "User variables", find "Path" and click "Edit"
+   - Click "New" and add: C:\flutter\bin (or wherever you extracted it)
+   - Click OK to save
+
+4. Open a NEW Command Prompt/PowerShell window and verify:
+   flutter --version
+
+5. Run Flutter doctor to check for any missing dependencies:
+   flutter doctor
+
+6. Install Android Studio from: https://developer.android.com/studio
+   - During installation, make sure to install Android SDK
+   - Accept Android licenses by running: flutter doctor --android-licenses
+
+================================================================================
+STEP 2: BUILD THE APK
+================================================================================
+
+1. Open Command Prompt or PowerShell
+
+2. Navigate to the project folder:
+   cd "C:\Users\PCYAZ\Documents\My Projects\Task-management"
+
+3. Get dependencies:
+   flutter pub get
+
+4. Build the APK:
+
+   For Debug APK (faster build, larger file):
+   flutter build apk --debug
+
+   For Release APK (optimized, smaller file):
+   flutter build apk --release
+
+5. The APK will be located at:
+   build\app\outputs\flutter-apk\app-release.apk
+   OR
+   build\app\outputs\flutter-apk\app-debug.apk
+
+================================================================================
+STEP 3: INSTALL ON YOUR PHONE
+================================================================================
+
+Option A - Using USB:
+1. Enable Developer Options on your phone
+2. Enable USB Debugging
+3. Connect your phone via USB
+4. Run: flutter install
+
+Option B - Manual Installation:
+1. Copy the APK file to your phone
+2. Open the file on your phone
+3. Allow installation from unknown sources if prompted
+4. Install the app
+
+================================================================================
+APP FEATURES
+================================================================================
+
+- Task Management: Add, edit, delete, and complete tasks
+- Multiple Views: Today, Week, and Month views
+- Analytics Dashboard: Track productivity and completion rates
+- Dark/Light Mode: Toggle between themes
+- Status Filtering: Filter by All, Completed, In Progress, or Missed
+- Priority Levels: Low, Medium, High priority for each task
+- Subtasks: Add subtasks to break down larger tasks
+- Swipe Actions: Swipe left to delete, right to complete
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If you get errors:
+
+1. "flutter: command not found"
+   - Make sure Flutter is in your PATH
+   - Open a new terminal window after adding to PATH
+
+2. "No Android SDK found"
+   - Install Android Studio
+   - Run: flutter doctor --android-licenses
+
+3. Build errors:
+   - Run: flutter clean
+   - Then: flutter pub get
+   - Then: flutter build apk
+
+4. Gradle errors:
+   - Make sure you have Java 11+ installed
+   - Set JAVA_HOME environment variable
+
+================================================================================
