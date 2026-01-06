@@ -15,6 +15,7 @@ import 'week_view.dart';
 import 'month_view.dart';
 import 'analytics_view.dart';
 import 'money_view.dart';
+import 'settings_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -133,6 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
       return MoneyView(isDarkMode: isDarkMode);
     }
 
+    if (taskProvider.viewType == ViewType.settings) {
+      return SettingsView(isDarkMode: isDarkMode);
+    }
+
     return Column(
       children: [
         FilterTabs(
@@ -166,6 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'My Money';
       case ViewType.analytics:
         return 'Analytics';
+      case ViewType.settings:
+        return 'Settings';
     }
   }
 

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
 
 class TaskProvider extends ChangeNotifier {
@@ -8,6 +10,8 @@ class TaskProvider extends ChangeNotifier {
   bool _isDarkMode = false;
   TaskStatus? _statusFilter;
   String? _selectedTaskId;
+
+  static const String _tasksKey = 'tasks_data';
 
   // Getters
   List<Task> get tasks => _tasks;
@@ -22,7 +26,25 @@ class TaskProvider extends ChangeNotifier {
       : null;
 
   TaskProvider() {
-    // Start with empty data - user will add their own
+    _loadTasks();
+  }
+
+  // Load tasks from SharedPreferences
+  Future<void> _loadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tasksJson = prefs.getString(_tasksKey);
+    if (tasksJson != null) {
+      final List<dynamic> decoded = jsonDecode(tasksJson);
+      _tasks = decoded.map((json) => Task.fromJson(json)).toList();
+      notifyListeners();
+    }
+  }
+
+  // Save tasks to SharedPreferences
+  Future<void> _saveTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tasksJson = jsonEncode(_tasks.map((t) => t.toJson()).toList());
+    await prefs.setString(_tasksKey, tasksJson);
   }
 
   // Filter tasks for today
@@ -80,6 +102,7 @@ class TaskProvider extends ChangeNotifier {
   // Actions
   void addTask(Task task) {
     _tasks.add(task);
+    _saveTasks();
     notifyListeners();
   }
 
@@ -87,6 +110,7 @@ class TaskProvider extends ChangeNotifier {
     final index = _tasks.indexWhere((t) => t.id == id);
     if (index != -1) {
       _tasks[index] = updatedTask;
+      _saveTasks();
       notifyListeners();
     }
   }
@@ -96,6 +120,7 @@ class TaskProvider extends ChangeNotifier {
     if (_selectedTaskId == id) {
       _selectedTaskId = null;
     }
+    _saveTasks();
     notifyListeners();
   }
 
@@ -108,6 +133,7 @@ class TaskProvider extends ChangeNotifier {
             ? TaskStatus.inProgress
             : TaskStatus.completed,
       );
+      _saveTasks();
       notifyListeners();
     }
   }
@@ -145,6 +171,13 @@ class TaskProvider extends ChangeNotifier {
   // Get tasks for a specific date
   List<Task> getTasksForDate(DateTime date) {
     return _tasks.where((task) => _isSameDay(task.dueDate, date)).toList();
+  }
+
+  // Set all tasks (for restore from backup)
+  void setTasks(List<Task> tasks) {
+    _tasks = tasks;
+    _saveTasks();
+    notifyListeners();
   }
 
   // Weekly stats

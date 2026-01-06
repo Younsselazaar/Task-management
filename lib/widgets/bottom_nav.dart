@@ -52,6 +52,12 @@ class BottomNavBar extends StatelessWidget {
                 isActive: activeView == ViewType.analytics,
                 onTap: () => onViewChange(ViewType.analytics),
               ),
+              _buildNavItem(
+                icon: Icons.settings_rounded,
+                label: 'Settings',
+                isActive: activeView == ViewType.settings,
+                onTap: () => onViewChange(ViewType.settings),
+              ),
             ],
           ),
         ),

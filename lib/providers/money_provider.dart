@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transaction.dart';
 
 class MoneyProvider extends ChangeNotifier {
   List<Transaction> _transactions = [];
   TransactionType? _typeFilter;
   String? _selectedTransactionId;
+
+  static const String _transactionsKey = 'transactions_data';
 
   List<Transaction> get transactions => _transactions;
   TransactionType? get typeFilter => _typeFilter;
@@ -16,7 +20,25 @@ class MoneyProvider extends ChangeNotifier {
       : null;
 
   MoneyProvider() {
-    // Start with empty data - user will add their own
+    _loadTransactions();
+  }
+
+  // Load transactions from SharedPreferences
+  Future<void> _loadTransactions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final transactionsJson = prefs.getString(_transactionsKey);
+    if (transactionsJson != null) {
+      final List<dynamic> decoded = jsonDecode(transactionsJson);
+      _transactions = decoded.map((json) => Transaction.fromJson(json)).toList();
+      notifyListeners();
+    }
+  }
+
+  // Save transactions to SharedPreferences
+  Future<void> _saveTransactions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final transactionsJson = jsonEncode(_transactions.map((t) => t.toJson()).toList());
+    await prefs.setString(_transactionsKey, transactionsJson);
   }
 
   // Filtered transactions
@@ -202,6 +224,7 @@ class MoneyProvider extends ChangeNotifier {
   // Actions
   void addTransaction(Transaction transaction) {
     _transactions.add(transaction);
+    _saveTransactions();
     notifyListeners();
   }
 
@@ -209,6 +232,7 @@ class MoneyProvider extends ChangeNotifier {
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) {
       _transactions[index] = updated;
+      _saveTransactions();
       notifyListeners();
     }
   }
@@ -218,6 +242,7 @@ class MoneyProvider extends ChangeNotifier {
     if (_selectedTransactionId == id) {
       _selectedTransactionId = null;
     }
+    _saveTransactions();
     notifyListeners();
   }
 
@@ -236,5 +261,12 @@ class MoneyProvider extends ChangeNotifier {
     return _transactions
         .where((t) => t.date.isAfter(start) && t.date.isBefore(end))
         .toList();
+  }
+
+  // Set all transactions (for restore from backup)
+  void setTransactions(List<Transaction> transactions) {
+    _transactions = transactions;
+    _saveTransactions();
+    notifyListeners();
   }
 }
