@@ -6,7 +6,7 @@ enum TaskPriority { low, medium, high }
 
 enum TimeFilter { today, week, month }
 
-enum ViewType { tasks, money, analytics, settings }
+enum ViewType { tasks, money, business, meetings, analytics, profile, settings }
 
 class Subtask {
   final String id;

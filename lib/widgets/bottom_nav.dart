@@ -47,6 +47,12 @@ class BottomNavBar extends StatelessWidget {
                 onTap: () => onViewChange(ViewType.money),
               ),
               _buildNavItem(
+                icon: Icons.business_center_rounded,
+                label: 'Business',
+                isActive: activeView == ViewType.business,
+                onTap: () => onViewChange(ViewType.business),
+              ),
+              _buildNavItem(
                 icon: Icons.bar_chart_rounded,
                 label: 'Analytics',
                 isActive: activeView == ViewType.analytics,
@@ -54,8 +60,8 @@ class BottomNavBar extends StatelessWidget {
               ),
               _buildNavItem(
                 icon: Icons.settings_rounded,
-                label: 'Settings',
-                isActive: activeView == ViewType.settings,
+                label: 'More',
+                isActive: activeView == ViewType.settings || activeView == ViewType.profile,
                 onTap: () => onViewChange(ViewType.settings),
               ),
             ],
@@ -82,7 +88,7 @@ class BottomNavBar extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isActive
               ? (isDarkMode
