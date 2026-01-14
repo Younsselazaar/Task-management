@@ -32,11 +32,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isModalShowing = false;
 
+  bool _isDesktop(BuildContext context) {
+    return MediaQuery.of(context).size.width >= 800;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<TaskProvider, BusinessProvider>(
       builder: (context, taskProvider, businessProvider, child) {
         final isDarkMode = taskProvider.isDarkMode;
+        final isDesktop = _isDesktop(context);
 
         // Show task details modal when a task is selected
         if (taskProvider.selectedTask != null && !_isModalShowing) {
@@ -45,6 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
               _showTaskDetails(context, taskProvider);
             }
           });
+        }
+
+        if (isDesktop) {
+          return _buildDesktopLayout(context, taskProvider, businessProvider, isDarkMode);
         }
 
         return Scaffold(
@@ -87,6 +96,166 @@ class _HomeScreenState extends State<HomeScreen> {
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context, TaskProvider taskProvider, BusinessProvider businessProvider, bool isDarkMode) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: isDarkMode
+              ? AppTheme.darkBackgroundGradient
+              : AppTheme.lightBackgroundGradient,
+        ),
+        child: Row(
+          children: [
+            // Desktop Sidebar
+            _buildDesktopSidebar(taskProvider, isDarkMode),
+            // Main content
+            Expanded(
+              child: Column(
+                children: [
+                  // Desktop header
+                  if (!(taskProvider.viewType == ViewType.business && businessProvider.selectedBusinessId != null))
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      child: Row(
+                        children: [
+                          Text(
+                            _getHeaderTitle(taskProvider.viewType),
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.grey[900],
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: Icon(
+                              isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                              color: isDarkMode ? Colors.white : Colors.grey[700],
+                            ),
+                            onPressed: taskProvider.toggleDarkMode,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: _buildContent(context, taskProvider, isDarkMode),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: _buildFAB(context, taskProvider, isDarkMode),
+    );
+  }
+
+  Widget _buildDesktopSidebar(TaskProvider taskProvider, bool isDarkMode) {
+    final activeView = taskProvider.viewType;
+
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // App Logo/Title
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.check_circle, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'TaskFlow',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.grey[900],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          // Navigation items
+          _buildSidebarItem(Icons.check_circle_outline, 'Tasks', ViewType.tasks, activeView, isDarkMode, taskProvider),
+          _buildSidebarItem(Icons.bar_chart, 'Analytics', ViewType.analytics, activeView, isDarkMode, taskProvider),
+          _buildSidebarItem(Icons.account_balance_wallet, 'Money', ViewType.money, activeView, isDarkMode, taskProvider),
+          _buildSidebarItem(Icons.business_center, 'Business', ViewType.business, activeView, isDarkMode, taskProvider),
+          _buildSidebarItem(Icons.video_call, 'Meetings', ViewType.meetings, activeView, isDarkMode, taskProvider),
+          const Spacer(),
+          const Divider(height: 1),
+          _buildSidebarItem(Icons.settings, 'Settings', ViewType.settings, activeView, isDarkMode, taskProvider),
+          _buildSidebarItem(Icons.person, 'Profile', ViewType.profile, activeView, isDarkMode, taskProvider),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem(IconData icon, String label, ViewType viewType, ViewType activeView, bool isDarkMode, TaskProvider taskProvider) {
+    final isActive = activeView == viewType;
+    final color = isActive
+        ? const Color(0xFF6366F1)
+        : (isDarkMode ? Colors.grey[400] : Colors.grey[600]);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => taskProvider.setViewType(viewType),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? const Color(0xFF6366F1).withOpacity(0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -332,7 +501,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
+      builder: (modalContext) => Consumer<BusinessProvider>(
+        builder: (modalContext, prov, _) => StatefulBuilder(
         builder: (context, setState) => Container(
           decoration: BoxDecoration(
             color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
@@ -355,9 +525,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildInputField('Price', priceController, 'Enter price', isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildInputField('Price', priceController, 'Enter price', isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
-                _buildInputField('Delivery Commission', commissionController, '0.00', isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildInputField('Delivery Commission', commissionController, '0.00', isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
                 _buildInputField('Customer Name', customerController, 'Enter customer name', isDarkMode),
                 const SizedBox(height: 12),
@@ -371,11 +541,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in required fields')));
                         return;
                       }
-                      provider.addOrder(Order(
+                      var price = double.tryParse(priceController.text) ?? 0;
+                      var commission = double.tryParse(commissionController.text) ?? 0;
+                      // Convert from USD to MAD if in USD mode
+                      if (prov.isUsd && prov.currentRate > 0) {
+                        price = price / prov.currentRate;
+                        commission = commission / prov.currentRate;
+                      }
+                      prov.addOrder(Order(
                         customerName: customerController.text.trim(),
                         description: descriptionController.text.trim(),
-                        price: double.tryParse(priceController.text) ?? 0,
-                        deliveryCommission: double.tryParse(commissionController.text) ?? 0,
+                        price: price,
+                        deliveryCommission: commission,
                         date: selectedDate,
                       ));
                       Navigator.pop(context);
@@ -393,6 +570,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -406,7 +584,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
+      builder: (modalContext) => Consumer<BusinessProvider>(
+        builder: (modalContext, prov, _) => StatefulBuilder(
         builder: (context, setState) => Container(
           decoration: BoxDecoration(
             color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
@@ -429,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildInputField('Amount', amountController, 'Enter amount', isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildInputField('Amount', amountController, 'Enter amount', isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
                 _buildInputField('Title', titleController, 'e.g., Monthly salary', isDarkMode),
                 const SizedBox(height: 12),
@@ -443,10 +622,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in required fields')));
                         return;
                       }
-                      provider.addIncome(Income(
+                      var amount = double.tryParse(amountController.text) ?? 0;
+                      // Convert from USD to MAD if in USD mode
+                      if (prov.isUsd && prov.currentRate > 0) {
+                        amount = amount / prov.currentRate;
+                      }
+                      prov.addIncome(Income(
                         title: titleController.text.trim(),
                         description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-                        amount: double.tryParse(amountController.text) ?? 0,
+                        amount: amount,
                         date: selectedDate,
                       ));
                       Navigator.pop(context);
@@ -464,6 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -477,7 +662,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
+      builder: (modalContext) => Consumer<BusinessProvider>(
+        builder: (modalContext, prov, _) => StatefulBuilder(
         builder: (context, setState) => Container(
           decoration: BoxDecoration(
             color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
@@ -500,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildInputField('Amount', amountController, 'Enter amount', isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildInputField('Amount', amountController, 'Enter amount', isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
                 _buildInputField('Title', titleController, 'e.g., Materials, Rent', isDarkMode),
                 const SizedBox(height: 12),
@@ -522,9 +708,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in required fields')));
                         return;
                       }
-                      provider.addExpense(Expense(
+                      var amount = double.tryParse(amountController.text) ?? 0;
+                      // Convert from USD to MAD if in USD mode
+                      if (prov.isUsd && prov.currentRate > 0) {
+                        amount = amount / prov.currentRate;
+                      }
+                      prov.addExpense(Expense(
                         title: titleController.text.trim(),
-                        amount: double.tryParse(amountController.text) ?? 0,
+                        amount: amount,
                         date: selectedDate,
                         type: selectedType,
                       ));
@@ -542,6 +733,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

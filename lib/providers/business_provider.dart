@@ -2,15 +2,29 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/business.dart';
+import '../services/exchange_rate_service.dart';
+
+enum Currency { mad, usd }
 
 class BusinessProvider extends ChangeNotifier {
   List<Business> _businesses = [];
   String? _selectedBusinessId;
+  Currency _currency = Currency.mad;
+  double _madToUsdRate = 0.099; // Default rate, will be updated from API
+  DateTime? _lastRateUpdate;
+  bool _isLoadingRate = false;
 
   static const String _businessesKey = 'businesses_data';
+  static const String _currencyKey = 'selected_currency';
 
   List<Business> get businesses => _businesses;
   String? get selectedBusinessId => _selectedBusinessId;
+  Currency get currency => _currency;
+  String get currencySymbol => _currency == Currency.mad ? 'DH' : '\$';
+  bool get isUsd => _currency == Currency.usd;
+  double get currentRate => _madToUsdRate;
+  DateTime? get lastRateUpdate => _lastRateUpdate;
+  bool get isLoadingRate => _isLoadingRate;
 
   Business? get selectedBusiness => _selectedBusinessId != null
       ? _businesses.firstWhere(
@@ -18,6 +32,49 @@ class BusinessProvider extends ChangeNotifier {
           orElse: () => _businesses.first,
         )
       : null;
+
+  // Convert amount based on selected currency
+  double convertAmount(double amountInMad) {
+    return _currency == Currency.usd ? amountInMad * _madToUsdRate : amountInMad;
+  }
+
+  // Format amount with currency symbol
+  String formatAmount(double amountInMad, {bool showSign = false}) {
+    final converted = convertAmount(amountInMad);
+    final sign = showSign && converted >= 0 ? '+' : '';
+    if (_currency == Currency.usd) {
+      return '$sign\$${converted.toStringAsFixed(2)}';
+    }
+    return '$sign${converted.toStringAsFixed(2)} DH';
+  }
+
+  // Toggle currency and fetch latest rate if switching to USD
+  void toggleCurrency() {
+    _currency = _currency == Currency.mad ? Currency.usd : Currency.mad;
+    _saveCurrency();
+    if (_currency == Currency.usd) {
+      refreshExchangeRate(); // Refresh rate when switching to USD
+    }
+    notifyListeners();
+  }
+
+  // Fetch latest exchange rate from API
+  Future<void> refreshExchangeRate() async {
+    if (_isLoadingRate) return;
+
+    _isLoadingRate = true;
+    notifyListeners();
+
+    try {
+      _madToUsdRate = await ExchangeRateService.fetchMadToUsdRate();
+      _lastRateUpdate = await ExchangeRateService.getLastUpdateTime();
+    } catch (e) {
+      // Keep existing rate on error
+    }
+
+    _isLoadingRate = false;
+    notifyListeners();
+  }
 
   BusinessProvider() {
     _loadData();
@@ -30,8 +87,21 @@ class BusinessProvider extends ChangeNotifier {
     if (businessesJson != null) {
       final List<dynamic> decoded = jsonDecode(businessesJson);
       _businesses = decoded.map((json) => Business.fromJson(json)).toList();
-      notifyListeners();
     }
+    // Load currency preference
+    final currencyStr = prefs.getString(_currencyKey);
+    if (currencyStr == 'usd') {
+      _currency = Currency.usd;
+    }
+
+    // Load cached exchange rate first for instant display
+    _madToUsdRate = await ExchangeRateService.getCachedOrFallbackRate();
+    _lastRateUpdate = await ExchangeRateService.getLastUpdateTime();
+
+    notifyListeners();
+
+    // Then fetch fresh rate in background
+    refreshExchangeRate();
   }
 
   // Save data to SharedPreferences
@@ -39,6 +109,12 @@ class BusinessProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final businessesJson = jsonEncode(_businesses.map((b) => b.toJson()).toList());
     await prefs.setString(_businessesKey, businessesJson);
+  }
+
+  // Save currency preference
+  Future<void> _saveCurrency() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencyKey, _currency == Currency.usd ? 'usd' : 'mad');
   }
 
   // Overall statistics across all businesses

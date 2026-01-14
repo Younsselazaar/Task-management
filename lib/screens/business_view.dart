@@ -126,14 +126,38 @@ class _BusinessViewState extends State<BusinessView> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      itemCount: provider.businesses.length,
-                      itemBuilder: (context, index) {
-                        final business = provider.businesses[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildBusinessCard(context, business, provider),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 600;
+                        if (isDesktop) {
+                          // Grid layout for desktop
+                          final crossAxisCount = constraints.maxWidth >= 1000 ? 3 : 2;
+                          return GridView.builder(
+                            padding: const EdgeInsets.only(bottom: 100),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              childAspectRatio: 2.2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                            ),
+                            itemCount: provider.businesses.length,
+                            itemBuilder: (context, index) {
+                              final business = provider.businesses[index];
+                              return _buildBusinessCard(context, business, provider);
+                            },
+                          );
+                        }
+                        // List layout for mobile
+                        return ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 100),
+                          itemCount: provider.businesses.length,
+                          itemBuilder: (context, index) {
+                            final business = provider.businesses[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _buildBusinessCard(context, business, provider),
+                            );
+                          },
                         );
                       },
                     ),
@@ -332,6 +356,7 @@ class _BusinessViewState extends State<BusinessView> {
     final totalProfit = _getTotalFilteredProfit(provider.businesses);
     final isWinning = totalProfit >= 0;
     final Color statusColor = isWinning ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final convertedProfit = provider.convertAmount(totalProfit);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -409,21 +434,24 @@ class _BusinessViewState extends State<BusinessView> {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      '${isWinning ? '+' : ''}${totalProfit.toStringAsFixed(2)}',
+                      provider.isUsd
+                          ? '${isWinning ? '+' : ''}\$${convertedProfit.toStringAsFixed(2)}'
+                          : '${isWinning ? '+' : ''}${convertedProfit.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const Text(
-                      ' DH',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white70,
+                    if (!provider.isUsd)
+                      const Text(
+                        ' DH',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white70,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -432,6 +460,55 @@ class _BusinessViewState extends State<BusinessView> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              // Currency toggle button
+              GestureDetector(
+                onTap: () => provider.toggleCurrency(),
+                onLongPress: () => provider.refreshExchangeRate(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (provider.isLoadingRate)
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      else
+                        Text(
+                          provider.isUsd ? '\$' : 'DH',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.swap_horiz, size: 14, color: Colors.white70),
+                    ],
+                  ),
+                ),
+              ),
+              if (provider.isUsd) ...[
+                const SizedBox(height: 2),
+                Text(
+                  '1 DH = \$${provider.currentRate.toStringAsFixed(3)}',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 4),
               _buildTypeCount(Icons.store, provider.ecomBusinessCount, 'Ecom'),
               const SizedBox(height: 4),
               _buildTypeCount(Icons.work, provider.salaryBusinessCount, 'Salary'),
@@ -573,7 +650,7 @@ class _BusinessViewState extends State<BusinessView> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${isWinning ? '+' : ''}${profit.toStringAsFixed(2)} DH',
+                    provider.formatAmount(profit, showSign: true),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

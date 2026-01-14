@@ -575,7 +575,9 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
   }
 
   Widget _buildComparisonItem(String label, int thisMonth, int lastMonth, double percentage, bool isUp, {bool isMoney = false}) {
+    final provider = Provider.of<BusinessProvider>(context, listen: false);
     final color = isUp ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final displayValue = isMoney ? provider.convertAmount(thisMonth.toDouble()).toInt() : thisMonth;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -585,15 +587,17 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isMoney && provider.isUsd)
+                  Text('\$', style: TextStyle(fontSize: 10, color: widget.isDarkMode ? Colors.grey[500] : Colors.grey[600])),
                 Text(
-                  '$thisMonth',
+                  '$displayValue',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: widget.isDarkMode ? Colors.white : Colors.grey[900],
                   ),
                 ),
-                if (isMoney)
+                if (isMoney && !provider.isUsd)
                   Text(' DH', style: TextStyle(fontSize: 10, color: widget.isDarkMode ? Colors.grey[500] : Colors.grey[600])),
               ],
             ),
@@ -614,11 +618,13 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
   }
 
   Widget _buildProfitCard(Business business) {
+    final provider = Provider.of<BusinessProvider>(context, listen: false);
     final profit = _getFilteredProfit(business);
     final isWinning = profit >= 0;
     final total = business.type == BusinessType.ecom ? _getFilteredRevenue(business) : _getFilteredIncome(business);
     final percentage = total > 0 ? (profit / total) * 100 : 0.0;
     final statusColor = isWinning ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final convertedProfit = provider.convertAmount(profit);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -672,17 +678,20 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      '${isWinning ? '+' : ''}${profit.toStringAsFixed(2)}',
+                      provider.isUsd
+                          ? '${isWinning ? '+' : ''}\$${convertedProfit.toStringAsFixed(2)}'
+                          : '${isWinning ? '+' : ''}${convertedProfit.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const Text(
-                      ' DH',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
-                    ),
+                    if (!provider.isUsd)
+                      const Text(
+                        ' DH',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
+                      ),
                   ],
                 ),
               ],
@@ -730,6 +739,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
   }
 
   Widget _buildSummaryCard(String label, double amount, IconData icon, Color color) {
+    final provider = Provider.of<BusinessProvider>(context, listen: false);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -763,7 +773,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
                   ),
                 ),
                 Text(
-                  '${amount.toStringAsFixed(2)} DH',
+                  provider.formatAmount(amount),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -870,6 +880,11 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
         break;
     }
 
+    final convertedPrice = provider.convertAmount(order.netPrice);
+    final priceDisplay = provider.isUsd
+        ? '\$${convertedPrice.toStringAsFixed(2)}'
+        : '${convertedPrice.toStringAsFixed(0)} DH';
+
     return Dismissible(
       key: Key(order.id),
       direction: DismissDirection.endToStart,
@@ -937,7 +952,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${order.netPrice.toStringAsFixed(0)} DH',
+                    priceDisplay,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -1013,6 +1028,11 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
   }
 
   Widget _buildIncomeCard(Income income, BusinessProvider provider) {
+    final convertedAmount = provider.convertAmount(income.amount);
+    final amountDisplay = provider.isUsd
+        ? '+\$${convertedAmount.toStringAsFixed(2)}'
+        : '+${convertedAmount.toStringAsFixed(2)} DH';
+
     return Dismissible(
       key: Key(income.id),
       direction: DismissDirection.endToStart,
@@ -1078,7 +1098,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
               ),
             ),
             Text(
-              '+${income.amount.toStringAsFixed(2)} DH',
+              amountDisplay,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -1142,6 +1162,10 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
   Widget _buildExpenseCard(Expense expense, BusinessProvider provider) {
     final isFixed = expense.type == ExpenseType.fixed;
     final typeColor = isFixed ? const Color(0xFF8B5CF6) : const Color(0xFFF59E0B);
+    final convertedAmount = provider.convertAmount(expense.amount);
+    final amountDisplay = provider.isUsd
+        ? '-\$${convertedAmount.toStringAsFixed(2)}'
+        : '-${convertedAmount.toStringAsFixed(2)} DH';
 
     return Dismissible(
       key: Key(expense.id),
@@ -1215,7 +1239,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
               ),
             ),
             Text(
-              '-${expense.amount.toStringAsFixed(2)} DH',
+              amountDisplay,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -1334,7 +1358,8 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
+      builder: (modalContext) => Consumer<BusinessProvider>(
+        builder: (modalContext, prov, _) => StatefulBuilder(
         builder: (context, setState) => Container(
           decoration: BoxDecoration(
             color: widget.isDarkMode ? const Color(0xFF1E293B) : Colors.white,
@@ -1353,9 +1378,9 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
               children: [
                 _buildModalHeader('Add Order', context),
                 const SizedBox(height: 16),
-                _buildTextField('Price', priceController, 'Enter price', widget.isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildTextField('Price', priceController, 'Enter price', widget.isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
-                _buildTextField('Delivery Commission', commissionController, '0.00', widget.isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildTextField('Delivery Commission', commissionController, '0.00', widget.isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
                 _buildTextField('Customer Name', customerController, 'Enter customer name', widget.isDarkMode),
                 const SizedBox(height: 12),
@@ -1370,9 +1395,14 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
                     );
                     return;
                   }
-                  final price = double.tryParse(priceController.text) ?? 0;
-                  final commission = double.tryParse(commissionController.text) ?? 0;
-                  provider.addOrder(Order(
+                  var price = double.tryParse(priceController.text) ?? 0;
+                  var commission = double.tryParse(commissionController.text) ?? 0;
+                  // Convert from USD to MAD if in USD mode
+                  if (prov.isUsd && prov.currentRate > 0) {
+                    price = price / prov.currentRate;
+                    commission = commission / prov.currentRate;
+                  }
+                  prov.addOrder(Order(
                     customerName: customerController.text.trim(),
                     description: descriptionController.text.trim(),
                     price: price,
@@ -1387,6 +1417,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -1400,7 +1431,8 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
+      builder: (modalContext) => Consumer<BusinessProvider>(
+        builder: (modalContext, prov, _) => StatefulBuilder(
         builder: (context, setState) => Container(
           decoration: BoxDecoration(
             color: widget.isDarkMode ? const Color(0xFF1E293B) : Colors.white,
@@ -1419,7 +1451,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
               children: [
                 _buildModalHeader('Add Income', context),
                 const SizedBox(height: 16),
-                _buildTextField('Amount', amountController, 'Enter amount', widget.isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildTextField('Amount', amountController, 'Enter amount', widget.isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
                 _buildTextField('Title', titleController, 'e.g., Monthly salary', widget.isDarkMode),
                 const SizedBox(height: 12),
@@ -1434,8 +1466,12 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
                     );
                     return;
                   }
-                  final amount = double.tryParse(amountController.text) ?? 0;
-                  provider.addIncome(Income(
+                  var amount = double.tryParse(amountController.text) ?? 0;
+                  // Convert from USD to MAD if in USD mode
+                  if (prov.isUsd && prov.currentRate > 0) {
+                    amount = amount / prov.currentRate;
+                  }
+                  prov.addIncome(Income(
                     title: titleController.text.trim(),
                     description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     amount: amount,
@@ -1447,6 +1483,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -1461,7 +1498,8 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
+      builder: (modalContext) => Consumer<BusinessProvider>(
+        builder: (modalContext, prov, _) => StatefulBuilder(
         builder: (context, setState) => Container(
           decoration: BoxDecoration(
             color: widget.isDarkMode ? const Color(0xFF1E293B) : Colors.white,
@@ -1480,7 +1518,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
               children: [
                 _buildModalHeader('Add Expense', context),
                 const SizedBox(height: 16),
-                _buildTextField('Amount', amountController, 'Enter amount', widget.isDarkMode, isNumber: true, suffix: 'DH'),
+                _buildTextField('Amount', amountController, 'Enter amount', widget.isDarkMode, isNumber: true, suffix: prov.currencySymbol),
                 const SizedBox(height: 12),
                 _buildTextField('Title', titleController, 'e.g., Materials, Rent', widget.isDarkMode),
                 const SizedBox(height: 12),
@@ -1503,8 +1541,12 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
                     );
                     return;
                   }
-                  final amount = double.tryParse(amountController.text) ?? 0;
-                  provider.addExpense(Expense(
+                  var amount = double.tryParse(amountController.text) ?? 0;
+                  // Convert from USD to MAD if in USD mode
+                  if (prov.isUsd && prov.currentRate > 0) {
+                    amount = amount / prov.currentRate;
+                  }
+                  prov.addExpense(Expense(
                     title: titleController.text.trim(),
                     amount: amount,
                     date: selectedDate,
@@ -1516,6 +1558,7 @@ class _BusinessDetailViewState extends State<BusinessDetailView> with SingleTick
             ),
           ),
         ),
+      ),
       ),
     );
   }
